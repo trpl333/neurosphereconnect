@@ -1,51 +1,82 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { metaImagesPlugin } from "./vite-plugin-meta-images";
+import react from "@vitejs/plugin-react-swc";
+import { resolve } from "node:path";
+import AutoImport from "unplugin-auto-import/vite";
 
+const base = process.env.BASE_PATH || "/";
+const isPreview = process.env.IS_PREVIEW ? true : false;
+// https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __BASE_PATH__: JSON.stringify(base),
+    __IS_PREVIEW__: JSON.stringify(isPreview),
+    __READDY_PROJECT_ID__: JSON.stringify(process.env.PROJECT_ID || ""),
+    __READDY_VERSION_ID__: JSON.stringify(process.env.VERSION_ID || ""),
+  },
   plugins: [
     react(),
-    runtimeErrorOverlay(),
-    tailwindcss(),
-    metaImagesPlugin(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
+    AutoImport({
+      imports: [
+        {
+          react: [
+            "React",
+            "useState",
+            "useEffect",
+            "useContext",
+            "useReducer",
+            "useCallback",
+            "useMemo",
+            "useRef",
+            "useImperativeHandle",
+            "useLayoutEffect",
+            "useDebugValue",
+            "useDeferredValue",
+            "useId",
+            "useInsertionEffect",
+            "useSyncExternalStore",
+            "useTransition",
+            "startTransition",
+            "lazy",
+            "memo",
+            "forwardRef",
+            "createContext",
+            "createElement",
+            "cloneElement",
+            "isValidElement",
+          ],
+        },
+        {
+          "react-router-dom": [
+            "useNavigate",
+            "useLocation",
+            "useParams",
+            "useSearchParams",
+            "Link",
+            "NavLink",
+            "Navigate",
+            "Outlet",
+          ],
+        },
+        // React i18n
+        {
+          "react-i18next": ["useTranslation", "Trans"],
+        },
+      ],
+      dts: true,
+    }),
   ],
+  base,
+  build: {
+    sourcemap: true,
+    outDir: "out",
+  },
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "@": resolve(__dirname, "./src"),
     },
-  },
-  css: {
-    postcss: {
-      plugins: [],
-    },
-  },
-  root: path.resolve(import.meta.dirname, "client"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
   },
   server: {
+    port: 3000,
     host: "0.0.0.0",
-    allowedHosts: true,
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
-    },
   },
 });
